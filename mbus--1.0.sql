@@ -686,7 +686,7 @@ $_$;
 
 
 
-CREATE FUNCTION create_view(qname text, cname text DEFAULT 'default'::text, viewname text DEFAULT NULL::text) RETURNS void
+CREATE FUNCTION create_view(qname text, cname text, viewname text) RETURNS void
     LANGUAGE plpgsql
     AS $_$
 declare
