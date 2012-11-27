@@ -154,6 +154,51 @@ ALTER TABLE ONLY trigger
 
 CREATE INDEX tempq_name_added ON tempq USING btree (((headers -> 'tempq'::text)), added) WHERE ((headers -> 'tempq'::text) IS NOT NULL);
 
+
+CREATE OR REPLACE FUNCTION string_format(format text, param hstore)
+RETURNS text 
+LANGUAGE sql IMMUTABLE
+AS
+$BODY$
+	/*
+	formats string using template
+	%[name] - inserting quote_literal(param->'<NAME>')
+	%{name} - quote_ident
+
+	select string_format('%[name] is %{value} and n=%[n] and name=%[name} %%[v]', hstore('name','lala') || hstore('value', 'The Value')||hstore('n',n::text))  from generate_series(1,1000) as gs(n); 
+	*/
+select 
+	array_to_string(
+   		array(
+     			select
+				case when s[1] like '^%{%}' escape '^'
+				      then quote_ident($2->(substr(s[1],3,length(s[1])-3)))
+				      when s[1] like '^%[%]' escape '^'
+				      then quote_literal($2->(substr(s[1],3,length(s[1])-3)))
+				      when s[1] like '^%<%>' escape '^'
+				      then ($2->(substr(s[1],3,length(s[1])-3)))
+				else
+					s[1]
+				end as s
+      		 	from regexp_matches($1, 
+                        	$RE$
+                         	(
+                          	% [[{<] \w+ []}>]
+                          	|
+                          	%%
+                          	|
+                          	(?: [^%]+ | %(?! [[{] ) )
+                         	)
+                         	$RE$,
+                         	'gx')
+                        as re(s)
+      
+		),
+  	'');
+
+$BODY$
+COST 100;
+
 CREATE FUNCTION clear_tempq() 
 RETURNS void
 LANGUAGE plpgsql
