@@ -704,7 +704,7 @@ begin
 	security definer
 	language plpgsql;
 
-	create trigger trg_%<qname>  instead of insert on %<sname>%viewname for each row execute procedure %<sname>trg_post_%<qname>();   
+	create trigger trg_%<qname>  instead of insert on %<sname>%<viewname> for each row execute procedure %<sname>trg_post_%<qname>();   
 	$STR$, param);
 end;
 $_$;
