@@ -687,15 +687,15 @@ $_$;
 
 
 
-CREATE FUNCTION create_view(qname text, cname text DEFAULT 'default'::text, viewname text DEFAULT NULL::text) RETURNS void
+CREATE FUNCTION create_view(qname text, cname text, sname text, viewname text) RETURNS void
     LANGUAGE plpgsql
     AS $_$
 declare
-	param hstore:=hstore('qname',qname)||hstore('cname',cname)||hstore('viewname', coalesce(viewname, 'public.'||qname||'_q'));
+	param hstore:=hstore('qname',qname)||hstore('cname',cname)|| hstore('sname',sname||'.')|| hstore('viewname', coalesce(viewname, 'public.'||qname));
 begin
-	execute string_format($STR$ create view %<viewname> as select data from mbus.consume('%<qname>', '%<cname>')$STR$, param);
+	execute string_format($STR$ create view %<sname>%<viewname> as select data from mbus.consume('%<qname>', '%<cname>')$STR$, param);
 	execute string_format($STR$
-	create or replace function trg_post_%<viewname>() returns trigger as
+	create or replace function %<sname>trg_post_%<viewname>() returns trigger as
 	$thecode$
 	begin
 		perform mbus.post('%<qname>',new.data);
@@ -705,11 +705,10 @@ begin
 	security definer
 	language plpgsql;
 
-	create trigger trg_%<qname>  instead of insert on %<qname>_q for each row execute procedure trg_post_%<qname>();   
+	create trigger trg_%<qname>  instead of insert on %<sname>%<viewname> for each row execute procedure %<sname>trg_post_%<viewname>();   
 	$STR$, param);
 end;
 $_$;
-
 
 
 CREATE FUNCTION drop_consumer(cname text, qname text) RETURNS void
