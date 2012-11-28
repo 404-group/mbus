@@ -690,7 +690,7 @@ CREATE FUNCTION create_view(qname text, cname text, viewname text) RETURNS void
     LANGUAGE plpgsql
     AS $_$
 declare
-	param hstore:=hstore('qname',qname)||hstore('cname',cname)||hstore('viewname', coalesce(viewname, 'public.'||qname||'_q'));
+	param hstore:=hstore('qname',qname)||hstore('cname',cname)||hstore('viewname', coalesce(viewname, 'public.'||qname));
 begin
 	execute string_format($STR$ create view %<viewname> as select data from mbus.consume('%<qname>', '%<cname>')$STR$, param);
 	execute string_format($STR$
