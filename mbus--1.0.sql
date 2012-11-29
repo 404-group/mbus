@@ -692,12 +692,12 @@ CREATE FUNCTION create_view(qname text, cname text, sname text, viewname text) R
 declare
 	param hstore:=hstore('qname',qname)||hstore('cname',cname)|| hstore('sname',sname||'.')|| hstore('viewname', coalesce(viewname, 'public.'||qname));
 begin
-	execute string_format($STR$ create view %<sname>%<viewname> as select data from mbus.consume('%<qname>', '%<cname>')$STR$, param);
+	execute string_format($STR$ create view %<sname>%<viewname> as select data, properties from mbus.consume('%<qname>', '%<cname>')$STR$, param);
 	execute string_format($STR$
 	create or replace function %<sname>trg_post_%<viewname>() returns trigger as
 	$thecode$
 	begin
-		perform mbus.post('%<qname>',new.data);
+		perform mbus.post('%<qname>',new.data, null, new.properties);
  		return null;
 	end;
 	$thecode$
