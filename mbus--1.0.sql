@@ -697,7 +697,7 @@ begin
 	create or replace function %<sname>trg_post_%<viewname>() returns trigger as
 	$thecode$
 	begin
-		perform mbus.post('%<qname>',new.data, null, new.properties);
+		perform mbus.post('%<qname>',new.data, new.properties);
  		return null;
 	end;
 	$thecode$
