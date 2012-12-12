@@ -712,14 +712,14 @@ CREATE FUNCTION create_view_prop(qname text, cname text, sname text, viewname te
     LANGUAGE plpgsql
     AS $_$
 declare
-	param hstore:=hstore('qname',qname)||hstore('cname',cname)|| hstore('sname',sname||'.')|| hstore('viewname', coalesce(viewname, 'public.'||qname));
+	param hstore := hstore('qname',qname)||hstore('cname',cname)|| hstore('sname',sname||'.')|| hstore('viewname', coalesce(viewname, 'public.'||qname));
 begin
 	execute string_format($STR$ create view %<sname>%<viewname> as select data, properties from mbus.consume('%<qname>', '%<cname>')$STR$, param);
 	execute string_format($STR$
 	create or replace function %<sname>trg_post_%<viewname>() returns trigger as
 	$thecode$
 	begin
-		perform mbus.post_%<qname>(new.data, null, new.properties, null, null);
+		perform mbus.post_%<qname>(new.data, null::hstore, new.properties, null::timestamp, null::timestamp);
  		return null;
 	end;
 	$thecode$
