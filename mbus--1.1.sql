@@ -733,6 +733,48 @@ begin
 end;
 $_$;
 
+create or replace function queue_acl( oper text, usr text, qname text, viewname text, schemaname text)
+returns void 
+language plpgsql as
+$_$
+declare
+	param hstore := hstore('oper', oper) || hstore('qname', qname) || hstore('usr', usr ) || hstore('viewname', viewname) || hstore('schemaname', schemaname);
+	l_func text;
+begin
+/*
+	execute string_format($STR$
+
+	$STR$, param);
+*/
+	if lower(oper) = 'grant' then
+		param := param || hstore('dir', 'to');
+	elsif lower(oper) = 'revoke' then
+		param := param || hstore('dir', 'from');
+	else
+		return;
+	end if;
+
+	execute string_format($SCH$ %<oper> usage on schema mbus %<dir> %<usr>$SCH$, param);
+	execute string_format($VSCH$ %<oper> usage on schema %<schemaname> %<dir> %<usr>$VSCH$, param);
+	execute string_format($VIW$ %<oper> insert,select on %<schemaname>.%<viewname> %<dir> %<usr>$VIW$, param);
+	execute string_format($TBL$ %<oper> all on mbus.qt$%<qname> %<dir> %<usr>$TBL$, param);
+	execute string_format($FNC$   
+		with f as ( 
+			SELECT n.nspname ||  '.' || p.proname || '(' || pg_catalog.pg_get_function_identity_arguments(p.oid) || ')' as func
+				FROM pg_catalog.pg_proc p
+				     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+				WHERE n.nspname ~ '^(mbus)$' and p.proname ~ '%<qname>'
+			)
+			select array_to_string( array_agg(func), ',') from f 
+	$FNC$, param) into l_func;
+	
+	param := param || hstore('l_func', l_func);
+	execute string_format($FNCL$%<oper> execute on function %<l_func> %<dir> %<usr>$FNCL$, param);
+	
+end;
+$_$;
+
+
 CREATE FUNCTION drop_consumer(cname text, qname text) RETURNS void
     LANGUAGE plpgsql
     AS $_$
