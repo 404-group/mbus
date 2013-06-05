@@ -733,6 +733,30 @@ begin
 end;
 $_$;
 
+
+CREATE FUNCTION create_view_prop(qname text, cname text, sname text, viewname text, with_delay boolean default false, with_expire boolean default false) RETURNS void
+    LANGUAGE plpgsql
+    AS $_$
+declare
+	param hstore := hstore('qname',qname)||hstore('cname',cname)|| hstore('sname',sname||'.')|| hstore('viewname', coalesce(viewname, 'public.'||qname));
+begin
+	execute mbus.string_format($STR$ create view %<sname>%<viewname> as select data, properties, delayed_until, expires from mbus.consume('%<qname>', '%<cname>')$STR$, param);
+	execute mbus.string_format($STR$
+	create or replace function %<sname>trg_post_%<viewname>() returns trigger as
+	$thecode$
+	begin
+		perform mbus.post_%<qname>(new.data, null::hstore, new.properties, new.delayed_until, new.expires);
+ 		return null;
+	end;
+	$thecode$
+	security definer
+	language plpgsql;
+
+	create trigger trg_%<qname>  instead of insert on %<sname>%<viewname> for each row execute procedure %<sname>trg_post_%<viewname>();   
+	$STR$, param);
+end;
+$_$;
+
 create or replace function queue_acl( oper text, usr text, qname text, viewname text, schemaname text)
 returns void 
 language plpgsql as
